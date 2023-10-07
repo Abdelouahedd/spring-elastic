@@ -1,0 +1,7 @@
+spring:
+  elasticsearch:
+    uris: http://localhost:9200
+
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
