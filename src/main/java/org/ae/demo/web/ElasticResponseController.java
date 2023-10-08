@@ -4,12 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.ae.demo.model.ElasticResponseModel;
 import org.ae.demo.service.ElasticResponseService;
-import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -84,7 +82,7 @@ public class ElasticResponseController {
 
 
     @GetMapping
-    public Iterator<SearchHit<ElasticResponseModel>> searchByContent(@RequestParam("content") String content) {
+    public List<ElasticResponseModel> searchByContent(@RequestParam("content") String content) {
         return service.searchByContent(content);
     }
 }

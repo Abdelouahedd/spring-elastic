@@ -7,14 +7,16 @@ import org.ae.demo.repository.ElasticResponseRepository;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
-import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -112,11 +114,15 @@ public class ElasticResponseService {
         repository.deleteAll(repository.findByEntryGuid(entryGuid));
     }
 
-    public Iterator<SearchHit<ElasticResponseModel>> searchByContent(String searchTerm) {
+    public List<ElasticResponseModel> searchByContent(String searchTerm) {
         QueryBuilder queryBuilder = QueryBuilders.matchQuery("content", searchTerm);
         Query searchQuery = new NativeSearchQueryBuilder().withQuery(queryBuilder).build();
-
-        return elasticsearchRestTemplate.search(searchQuery, ElasticResponseModel.class, IndexCoordinates.of(MODEL_INDEX)).stream().iterator();
+        return elasticsearchRestTemplate.search(searchQuery, ElasticResponseModel.class, IndexCoordinates.of(MODEL_INDEX)).stream()
+                .map(searchHit -> {
+                    ElasticResponseModel elasticResponseModel = searchHit.getContent();
+                    getAnswersAndHistories(elasticResponseModel);
+                    return elasticResponseModel;
+                }).toList();
     }
 
     private void getAnswersAndHistories(ElasticResponseModel elasticResponseModel) {
