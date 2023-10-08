@@ -14,9 +14,7 @@ import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.time.ZonedDateTime;
-import java.util.Iterator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -35,9 +33,7 @@ public class ElasticResponseService {
     //- Finding document by specific guid will return that single unique document.
     public ElasticResponseModel findByGuid(UUID guid) {
         ElasticResponseModel elasticResponseModel = repository.findById(guid).orElseThrow(() -> new RuntimeException("No document found with guid: " + guid));
-        //get history
-        List<ElasticResponseModel> responseModelList = repository.findByEntryGuidAndArchivedIsNotNull(elasticResponseModel.getEntryGuid());
-        elasticResponseModel.setHistory(responseModelList);
+        getAnswersAndHistories(elasticResponseModel);
         return elasticResponseModel;
     }
 
@@ -57,23 +53,22 @@ public class ElasticResponseService {
     public List<ElasticResponseModel> findByExternalGuid(UUID externalGuid) {
         return repository.findByExternalGuid(externalGuid)
                 .stream()
-                .peek(elasticResponseModel -> {
-                    List<ElasticResponseModel> responseModelList = repository.findByEntryGuidAndArchivedIsNotNull(elasticResponseModel.getEntryGuid());
-                    elasticResponseModel.setHistory(responseModelList);
-                }).toList();
+                .peek(this::getAnswersAndHistories)
+                .toList();
     }
 
     public List<ElasticResponseModel> findByThreadGuid(UUID threadGuid) {
         return repository.findByThreadGuid(threadGuid)
                 .stream()
-                .peek(elasticResponseModel -> {
-                    List<ElasticResponseModel> responseModelList = repository.findByEntryGuidAndArchivedIsNotNull(elasticResponseModel.getEntryGuid());
-                    elasticResponseModel.setHistory(responseModelList);
-                }).toList();
+                .peek(this::getAnswersAndHistories)
+                .toList();
     }
 
     public List<ElasticResponseModel> findByEntryGuid(UUID entryGuid) {
-        return repository.findByEntryGuid(entryGuid);
+        return repository.findByEntryGuid(entryGuid)
+                .stream()
+                .peek(this::getAnswersAndHistories)
+                .toList();
     }
 
     public void archiveByExternalGuid(UUID externalGuid) {
@@ -122,5 +117,19 @@ public class ElasticResponseService {
         Query searchQuery = new NativeSearchQueryBuilder().withQuery(queryBuilder).build();
 
         return elasticsearchRestTemplate.search(searchQuery, ElasticResponseModel.class, IndexCoordinates.of(MODEL_INDEX)).stream().iterator();
+    }
+
+    private void getAnswersAndHistories(ElasticResponseModel elasticResponseModel) {
+        //get history (get all archived versions of this document by entryGuid and archived is not null)
+        List<ElasticResponseModel> history = repository.findByEntryGuidAndArchivedIsNotNull(elasticResponseModel.getEntryGuid());
+        elasticResponseModel.setHistory(history);
+        //get answers (get all documents by entryGuidParent or entryGuid if entryGuidParent is null get all documents by entryGuid)
+        List<ElasticResponseModel> answers = new ArrayList<>();
+        Optional.ofNullable(elasticResponseModel.getEntryGuidParent())
+                .ifPresentOrElse(
+                        entryGuidParent -> answers.addAll(repository.findByEntryGuidParent(entryGuidParent)),
+                        () -> answers.addAll(repository.findByEntryGuid(elasticResponseModel.getEntryGuid()))
+                );
+        elasticResponseModel.setAnswers(answers);
     }
 }

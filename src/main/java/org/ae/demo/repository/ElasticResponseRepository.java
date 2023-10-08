@@ -1,6 +1,7 @@
 package org.ae.demo.repository;
 
 import org.ae.demo.model.ElasticResponseModel;
+import org.springframework.data.elasticsearch.annotations.Query;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,4 +18,6 @@ public interface ElasticResponseRepository extends ElasticsearchRepository<Elast
     List<ElasticResponseModel> findByEntryGuid(UUID entryGuid);
 
     List<ElasticResponseModel> findByEntryGuidAndArchivedIsNotNull(UUID entryGuid);
+
+    List<ElasticResponseModel> findByEntryGuidParent(UUID entryGuidParent);
 }
